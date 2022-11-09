@@ -1,34 +1,188 @@
-var container=document.getElementById("container")
-let cdata ;
-let ratingGraph;
-//console.log(container)
+const base_api_url="https://codeforces.com/api/";
+var cresponse ;
+var cdata ;
+var ratingGraph;
+var submissionGraph;
+var tagsGraph;
+var problemGraph;
+
+async function getData(){
+	// Getting Handle and checking if that is a valid one
+	var handle = document.getElementById("handle").value;
+	const api_url = 'https://codeforces.com/api/user.info?handles='+handle;
+	const contest_url = "https://codeforces.com/api/user.rating?handle="+handle;
+	const response = await fetch(api_url);
+	const data = await response.json();
+	
+	document.getElementById("error").textContent = "";
+	if(data.status!="OK") {
+		document.getElementById("error").textContent = "Not a valid handle!";
+		return;
+	}
+	document.getElementById("hiddendiv").style.display = "block";
+	document.getElementById("userTable").innerHTML="";
+	var name = "";
+	if(typeof data.result[0].firstName!= "undefined") name = name+ data.result[0].firstName+" ";
+	if(typeof data.result[0].lastName!= "undefined") name = name+ data.result[0].lastName;
+
+	addTableRow("userTable","Name",name);
+	if(typeof data.result[0].country != "undefined" )
+		addTableRow("userTable","Country",data.result[0].country);
+	addTableRow("userTable","Rating",data.result[0].rating);
+	addTableRow("userTable","Max Rating",data.result[0].maxRating);
+	addTableRow("userTable","Friend of",data.result[0].friendOfCount);
+	addTableRow("userTable","Contribution",data.result[0].contribution );
+	document.getElementById("dp").src = data.result[0].titlePhoto;
+	
+	// Asking Contest objects for rating chart
+	cresponse = await fetch(contest_url);
+	cdata = await cresponse.json();
+	if(cdata.status == "OK"){
+		changeRatingChart();
+	}
+	document.getElementById("contestTable").innerHTML="";
+	var maxRank = -100000, minRank = 1000000;
+	for(i=0;i<cdata.result.length;i++){
+		maxRank = Math.max(maxRank, cdata.result[i].rank);
+		minRank = Math.min(minRank, cdata.result[i].rank);
+	}
+	addTableRow("contestTable","Total Contest",cdata.result.length);
+	addTableRow("contestTable","Best Rank",minRank);
+	addTableRow("contestTable","Worst Rank",maxRank);
+	addTableRow("contestTable","Rank",data.result[0].rank);
+	addTableRow("contestTable","Max Rank",data.result[0].maxRank);
+	
+	const sresponse = await fetch(base_api_url+"user.status?handle="+handle);
+	const submission_data = await sresponse.json();
+	var count = submission_data.result.length;
+	var ac = 0, ce = 0 ,wa = 0, tle = 0, rte = 0, mle = 0, others = 0;
+	var ara = [], arac = [];
+	var mxpr = 0;
+	var strongTags = [], weakTags = [];
+	
+	for(i=0;i<count;i++){
+		var ch = submission_data.result[i].problem.index;
+		var ca = "A";
+		// var dif=ch[0]-ca[0];
+		var dif = ch.charCodeAt(0)-ca.charCodeAt(0);
+		
+		if( typeof ara[dif] == "undefined") {ara[dif] = 0; arac[dif] = 0;}
+		ara[dif]++;
+		
+		var verdict = submission_data.result[i].verdict;
+		if( verdict == "OK" ){
+			ac++;
+			arac[dif]++;
+			if(dif>mxpr) mxpr = dif;
+		}
+		else if( verdict == "WRONG_ANSWER" ){wa++;}
+		else if( verdict == "COMPILATION_ERROR") ce++;
+		else if( verdict == "TIME_LIMIT_EXCEEDED") tle++;
+		else if( verdict == "MEMORY_LIMIT_EXCEEDED") mle++;
+		else if( verdict == "RUNTIME_ERROR") rte++;
+		else others++;
+		var tags = submission_data.result[i].problem.tags;
+	
+		if(verdict == "OK" ){
+			strongTags = strongTags.concat(tags);
+		}else{
+			weakTags = weakTags.concat(tags);
+		}
+		
+	}
+	
+	strongTags.sort();
+	weakTags.sort();
+	// console.log(strongTags.length);
+	
+	var toptenWeak = [], toptenStrong = [];
+	var lasts = 0, lastw = 0;
+	for(i = 1;i<strongTags.length;i++){
+		if(strongTags[i]!=strongTags[i-1]){
+			var x = i-lasts;
+			var temp = [strongTags[i-1]+": "+x ,i-lasts];
+			lasts = i;
+			toptenStrong.push(temp);
+		}
+		if(weakTags[i]!=weakTags[i-1]){
+			var x = i-lastw
+			var temp = [weakTags[i-1]+": "+x,i-lastw];
+			lastw = i;
+			toptenWeak.push(temp);
+		}
+	}
+	var dataTags = [["Type","Count"],["AC: "+ac,ac],["WA: "+wa,wa],["CE: "+ce,ce],["RTE: "+rte,rte],["MLE: "+mle,mle],["Others: "+others,others]];
+	createDonutChart(dataTags,"submissionchart"); 
+	
+	var para = [["Tags","Solved"]];
+	para = para.concat(toptenStrong);
+	console.log(para[1][0]);
+	createDonutChart(para,"donutchart");
+	
+	var datalabels4 = [];
+	var datax4 = [];
+	for(i = mxpr;i>=0;i--){
+		if( typeof arac[i] == "undefined") arac[i] = 0;
+		const character = String.fromCharCode(i+65);
+		datalabels4.push(character);
+		var tempe = [];
+		datax4.push(arac[i]);
+		//console.log(ara[i]);
+	}
+	createProblemChart(datalabels4,datax4);
+	
+}
+
 function changeRatingChart(){
 	if( typeof cdata == "undefined") return;
 	
 	const datalabels = [];
-		const datax = [];
-		const state = "newRating";
-		var sstattus = "";
-		for(i=0;i<cdata.result.length;i++){
-			if(state == "newRating"){
-				datax.push(cdata.result[i].newRating);
-				sstatus = "Contest Rating Changes";
-			}
-			else if(state == "changedRating"){
-				sstatus = "Contest Changed Rating";
-				if(i == 0) datax.push(cdata.result[i].newRating-1500);
-				else datax.push(cdata.result[i].newRating-cdata.result[i].oldRating);
-			}
-			else {
-				datax.push(cdata.result[i].rank);
-				sstatus = "Contest Rank";
-			}
-			//console.log(cdata.result[i].newRating-cdata.result[i].oldRating);
-			datalabels.push(i+1);
+	const datax = [];
+	const state = "newRating";
+	var sstattus = "Contest Rating Changes";
+	for(i=0;i<cdata.result.length;i++){
+		datax.push(cdata.result[i].newRating);
+		datalabels.push(i+1);
 			
-		}
-		createratingchart(datalabels,datax,sstatus);
+	}
+	createratingchart(datalabels,datax,sstattus);
 }
+
+function createsubmissionchart(datalabels,datax,chartType,chartname){
+	if(chartname){
+		chartname.data.labels = datalabels;
+		chartname.data.datasets[0].data = datax;
+		chartname.update();
+	} else {
+		var ctx = document.getElementById(chartType).getContext('2d');
+		chartname = new Chart(ctx, {
+			type: 'doughnut',
+			
+			data: {
+				labels: datalabels,
+				datasets: [{
+					label: 'Total Submission',
+					data: datax,
+					backgroundColor: [
+						'rgba(0, 255, 0, 1)',
+						'rgba(255, 0, 0, 1)',
+						'rgba(255, 255, 0, 1)',
+						'rgba(255, 130, 0, 1)',
+						'rgba(130, 0, 255, 1)',
+						'rgba(114, 110, 117,1)'
+					],
+					borderColor: 'rgba(0,0,0, 0.5)',
+					
+				}]
+			},
+			options: {
+				
+			}
+		});
+	}
+	
+}
+
 function createratingchart(datalabels,datax,sstatus){
 	if(ratingGraph){
 		ratingGraph.data.labels = datalabels;
@@ -66,60 +220,77 @@ function createratingchart(datalabels,datax,sstatus){
 	}
 }
 
-async function getuserinfo(){
-    let input=document.getElementById("profile").value
-    console.log("1")
-    console.log(input)
-    const api_url = 'https://codeforces.com/api/user.info?handles='+input;
-    let res= await fetch(api_url)
-    if(res.status!==200)
-    {console.log(res.status);}
-    
-    let data=await res.json();
-    console.log(data.result[0]);
-
-    const contest_url = "https://codeforces.com/api/user.rating?handle="+input;
-    cresponse = await fetch(contest_url);
-	cdata = await cresponse.json();
-	if(cdata.status == "OK"){
-        document.getElementById("card").style.display="block";
-		changeRatingChart();
+function createProblemChart(datalabels,datax){
+	if(problemGraph){
+		problemGraph.data.labels = datalabels;
+		problemGraph.data.datasets[0].data = datax;
+		problemGraph.update();
+	} else{
+		var ctx = document.getElementById('problemChart').getContext('2d');
+		problemGraph = new Chart(ctx, {
+			type: 'bar',
+			
+			data: {
+				labels: datalabels,
+				datasets: [{
+					label: 'Problem Counts',
+					data: datax,
+					fill: false,
+					backgroundColor: 'rgba(50, 102, 168, 1)',
+					borderColor: 'rgba(255, 99, 132, 1)',
+					borderWidth: 1
+				}]
+			},
+			options: {
+				
+			}
+		});
 	}
-
-
-    let html=``
-    html+=` 
-    <div class="user_info">
-            <table class="info">
-                <tbody>
-                    <tr>
-                        <td>Username</td>
-                        <td> : </td>
-                        <td>${input}</td>
-                    </tr>
-                    <tr>
-                        <td>Rating</td>
-                        <td> : </td>
-                        <td>${data.result[0].rating}</td>
-                        <td>Max Rating</td>
-                        <td> : </td>
-                        <td>${data.result[0].maxRating}</td>
-                    </tr>
-                    <tr>
-                        <td>Contribution</td>
-                        <td> : </td>
-                        <td>${data.result[0].contribution}</td>
-                    </tr>
-                </tbody>
-            </table>
-          </div>`;
-
-    container.innerHTML=html;
-    
 }
 
-let btn=document.getElementById("button")
-btn.addEventListener('click',getuserinfo)
+function createDonutChart(datatoshow,chartName){
+	google.charts.load("current", {packages:["corechart"]});
+      google.charts.setOnLoadCallback(drawmChart);
+      function drawmChart() {
+        var data = google.visualization.arrayToDataTable(datatoshow);
+
+        var tagOptions = {
+			width: Math.max(600, $('.contents').width()),
+			height: Math.max(600, $('.contents').width()) * 0.70,
+			chartArea: { width: '80%', height: '70%' },
+			pieSliceText: 'none',
+			legend: {
+			  position: 'right',
+			  alignment: 'center',
+			},
+			pieHole: 0.5,
+			tooltip: {
+			  text: 'percentage'
+			},
+			fontName: 'Roboto',
+			
+		  };
+
+        var chart = new google.visualization.PieChart(document.getElementById(chartName));
+        chart.draw(data, tagOptions);
+
+	}
+}
+function addTableRow(name,data1,data2){
+	var table = document.getElementById(name);
+
+    // Create an empty <tr> element and add it to the 1st position of the table:
+    var row = table.insertRow();
+
+   // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
+    var cell1 = row.insertCell(0);
+    var cell2 = row.insertCell(1);
+
+    // Add some text to the new cells:
+    cell1.innerHTML = data1;
+    cell2.innerHTML = data2;
+}
+		
 
 // async function getuserrating(){
 //     let ip=document.getElementById("profile").value
