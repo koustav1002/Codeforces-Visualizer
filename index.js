@@ -1,14 +1,14 @@
 const base_api_url="https://codeforces.com/api/";
-var cresponse ;
-var cdata ;
-var ratingGraph;
-var submissionGraph;
-var tagsGraph;
-var problemGraph;
+let cresponse ;
+let cdata ;
+let ratingGraph;
+let submissionGraph;
+let tagsGraph;
+let problemGraph;
 
 async function getData(){
 	// Getting Handle and checking if that is a valid one
-	var handle = document.getElementById("handle").value;
+	let handle = document.getElementById("handle").value;
 	const api_url = 'https://codeforces.com/api/user.info?handles='+handle;
 	const contest_url = "https://codeforces.com/api/user.rating?handle="+handle;
 	const response = await fetch(api_url);
@@ -21,7 +21,7 @@ async function getData(){
 	}
 	document.getElementById("hiddendiv").style.display = "block";
 	document.getElementById("userTable").innerHTML="";
-	var name = "";
+	let name = "";
 	if(typeof data.result[0].firstName!= "undefined") name = name+ data.result[0].firstName+" ";
 	if(typeof data.result[0].lastName!= "undefined") name = name+ data.result[0].lastName;
 
@@ -41,7 +41,7 @@ async function getData(){
 		changeRatingChart();
 	}
 	document.getElementById("contestTable").innerHTML="";
-	var maxRank = -100000, minRank = 1000000;
+	let maxRank = -100000, minRank = 1000000;
 	for(i=0;i<cdata.result.length;i++){
 		maxRank = Math.max(maxRank, cdata.result[i].rank);
 		minRank = Math.min(minRank, cdata.result[i].rank);
@@ -54,22 +54,22 @@ async function getData(){
 	
 	const sresponse = await fetch(base_api_url+"user.status?handle="+handle);
 	const submission_data = await sresponse.json();
-	var count = submission_data.result.length;
-	var ac = 0, ce = 0 ,wa = 0, tle = 0, rte = 0, mle = 0, others = 0;
-	var ara = [], arac = [];
-	var mxpr = 0;
-	var strongTags = [], weakTags = [];
+	let count = submission_data.result.length;
+	let ac = 0, ce = 0 ,wa = 0, tle = 0, rte = 0, mle = 0, others = 0;
+	let ara = [], arac = [];
+	let mxpr = 0;
+	let strongTags = [], weakTags = [];
 	
 	for(i=0;i<count;i++){
-		var ch = submission_data.result[i].problem.index;
-		var ca = "A";
-		// var dif=ch[0]-ca[0];
-		var dif = ch.charCodeAt(0)-ca.charCodeAt(0);
+		let ch = submission_data.result[i].problem.index;
+		let ca = "A";
+		// let dif=ch[0]-ca[0];
+		let dif = ch.charCodeAt(0)-ca.charCodeAt(0);
 		
 		if( typeof ara[dif] == "undefined") {ara[dif] = 0; arac[dif] = 0;}
 		ara[dif]++;
 		
-		var verdict = submission_data.result[i].verdict;
+		let verdict = submission_data.result[i].verdict;
 		if( verdict == "OK" ){
 			ac++;
 			arac[dif]++;
@@ -81,7 +81,7 @@ async function getData(){
 		else if( verdict == "MEMORY_LIMIT_EXCEEDED") mle++;
 		else if( verdict == "RUNTIME_ERROR") rte++;
 		else others++;
-		var tags = submission_data.result[i].problem.tags;
+		let tags = submission_data.result[i].problem.tags;
 	
 		if(verdict == "OK" ){
 			strongTags = strongTags.concat(tags);
@@ -95,37 +95,37 @@ async function getData(){
 	weakTags.sort();
 	// console.log(strongTags.length);
 	
-	var toptenWeak = [], toptenStrong = [];
-	var lasts = 0, lastw = 0;
+	let toptenWeak = [], toptenStrong = [];
+	let lasts = 0, lastw = 0;
 	for(i = 1;i<strongTags.length;i++){
 		if(strongTags[i]!=strongTags[i-1]){
-			var x = i-lasts;
-			var temp = [strongTags[i-1]+": "+x ,i-lasts];
+			let x = i-lasts;
+			let temp = [strongTags[i-1]+": "+x ,i-lasts];
 			lasts = i;
 			toptenStrong.push(temp);
 		}
 		if(weakTags[i]!=weakTags[i-1]){
-			var x = i-lastw
-			var temp = [weakTags[i-1]+": "+x,i-lastw];
+			let x = i-lastw
+			let temp = [weakTags[i-1]+": "+x,i-lastw];
 			lastw = i;
 			toptenWeak.push(temp);
 		}
 	}
-	var dataTags = [["Type","Count"],["AC: "+ac,ac],["WA: "+wa,wa],["CE: "+ce,ce],["RTE: "+rte,rte],["MLE: "+mle,mle],["Others: "+others,others]];
+	let dataTags = [["Type","Count"],["AC: "+ac,ac],["WA: "+wa,wa],["CE: "+ce,ce],["RTE: "+rte,rte],["MLE: "+mle,mle],["Others: "+others,others]];
 	createDonutChart(dataTags,"submissionchart"); 
 	
-	var para = [["Tags","Solved"]];
+	let para = [["Tags","Solved"]];
 	para = para.concat(toptenStrong);
 	console.log(para[1][0]);
 	createDonutChart(para,"donutchart");
 	
-	var datalabels4 = [];
-	var datax4 = [];
+	let datalabels4 = [];
+	let datax4 = [];
 	for(i = mxpr;i>=0;i--){
 		if( typeof arac[i] == "undefined") arac[i] = 0;
 		const character = String.fromCharCode(i+65);
 		datalabels4.push(character);
-		var tempe = [];
+		let tempe = [];
 		datax4.push(arac[i]);
 		//console.log(ara[i]);
 	}
@@ -138,49 +138,14 @@ function changeRatingChart(){
 	
 	const datalabels = [];
 	const datax = [];
-	const state = "newRating";
-	var sstattus = "Contest Rating Changes";
+	
+	let sstattus = "Contest Rating Changes";
 	for(i=0;i<cdata.result.length;i++){
 		datax.push(cdata.result[i].newRating);
 		datalabels.push(i+1);
 			
 	}
 	createratingchart(datalabels,datax,sstattus);
-}
-
-function createsubmissionchart(datalabels,datax,chartType,chartname){
-	if(chartname){
-		chartname.data.labels = datalabels;
-		chartname.data.datasets[0].data = datax;
-		chartname.update();
-	} else {
-		var ctx = document.getElementById(chartType).getContext('2d');
-		chartname = new Chart(ctx, {
-			type: 'doughnut',
-			
-			data: {
-				labels: datalabels,
-				datasets: [{
-					label: 'Total Submission',
-					data: datax,
-					backgroundColor: [
-						'rgba(0, 255, 0, 1)',
-						'rgba(255, 0, 0, 1)',
-						'rgba(255, 255, 0, 1)',
-						'rgba(255, 130, 0, 1)',
-						'rgba(130, 0, 255, 1)',
-						'rgba(114, 110, 117,1)'
-					],
-					borderColor: 'rgba(0,0,0, 0.5)',
-					
-				}]
-			},
-			options: {
-				
-			}
-		});
-	}
-	
 }
 
 function createratingchart(datalabels,datax,sstatus){
@@ -190,7 +155,7 @@ function createratingchart(datalabels,datax,sstatus){
 		ratingGraph.data.datasets[0].label = sstatus;
 		ratingGraph.update();
 	}else {
-		var ctx = document.getElementById('ratingChart').getContext('2d');
+		let ctx = document.getElementById('ratingChart').getContext('2d');
 		ratingGraph = new Chart(ctx, {
 			type: 'line',
 			
@@ -204,16 +169,6 @@ function createratingchart(datalabels,datax,sstatus){
 					borderColor: 'rgba(255, 99, 132, 1)',
 					borderWidth: 1
 				}]
-			},
-			options: {
-				fullWidth: true,
-				scales: {
-					yAxes: [{
-						ticks: {
-							beginAtZero: false
-						}
-					}]
-				}
 			}
 		});
 		ratingGraph.canvas.parentNode.style.width = '1000px';
@@ -226,7 +181,7 @@ function createProblemChart(datalabels,datax){
 		problemGraph.data.datasets[0].data = datax;
 		problemGraph.update();
 	} else{
-		var ctx = document.getElementById('problemChart').getContext('2d');
+		let ctx = document.getElementById('problemChart').getContext('2d');
 		problemGraph = new Chart(ctx, {
 			type: 'bar',
 			
@@ -240,9 +195,6 @@ function createProblemChart(datalabels,datax){
 					borderColor: 'rgba(255, 99, 132, 1)',
 					borderWidth: 1
 				}]
-			},
-			options: {
-				
 			}
 		});
 	}
@@ -252,13 +204,13 @@ function createDonutChart(datatoshow,chartName){
 	google.charts.load("current", {packages:["corechart"]});
       google.charts.setOnLoadCallback(drawmChart);
       function drawmChart() {
-        var data = google.visualization.arrayToDataTable(datatoshow);
+        let data = google.visualization.arrayToDataTable(datatoshow);
 
-        var tagOptions = {
+        let tagOptions = {
 			width: Math.max(600, $('.contents').width()),
 			height: Math.max(600, $('.contents').width()) * 0.70,
 			chartArea: { width: '80%', height: '70%' },
-			pieSliceText: 'none',
+			is3D : true,
 			legend: {
 			  position: 'right',
 			  alignment: 'center',
@@ -271,33 +223,23 @@ function createDonutChart(datatoshow,chartName){
 			
 		  };
 
-        var chart = new google.visualization.PieChart(document.getElementById(chartName));
+        let chart = new google.visualization.PieChart(document.getElementById(chartName));
         chart.draw(data, tagOptions);
 
 	}
 }
+  
 function addTableRow(name,data1,data2){
-	var table = document.getElementById(name);
+	let table = document.getElementById(name);
 
     // Create an empty <tr> element and add it to the 1st position of the table:
-    var row = table.insertRow();
+    let row = table.insertRow();
 
    // Insert new cells (<td> elements) at the 1st and 2nd position of the "new" <tr> element:
-    var cell1 = row.insertCell(0);
-    var cell2 = row.insertCell(1);
+    let cell1 = row.insertCell(0);
+    let cell2 = row.insertCell(1);
 
     // Add some text to the new cells:
     cell1.innerHTML = data1;
     cell2.innerHTML = data2;
 }
-		
-
-// async function getuserrating(){
-//     let ip=document.getElementById("profile").value
-//     console.log(ip)
-//     const url='https://codeforces.com/api/user.rating?handles='+ip;
-//     let res1=await fetch(url)
-
-//     let data=await res.json();
-//     console.log(data.result[0]);
-// }
